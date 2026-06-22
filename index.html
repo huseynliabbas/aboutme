@@ -614,7 +614,7 @@
   position: fixed;
   bottom: 20px;
   right: 20px;
-  background: linear-gradient(135deg, var(--accent), #5dade2);
+  background: linear-gradient(135deg, #2980b9, #5dade2);
   color: white;
   padding: 12px 20px;
   border-radius: 30px;
@@ -628,16 +628,20 @@
   font-family: 'Inter', sans-serif;
 ">
   <i class="fa-solid fa-eye"></i>
-  <span id="visitor-count">...</span> ziyarətçi
+  <span id="visitor-count">0</span> ziyarətçi
 </div>
 
 <script>
-  fetch('https://api.countapi.xyz/hit/abbashuseynli-portfolio/visits')
-    .then(res => res.json())
+   const counterName = 'huseynliabbas'; 
+  
+  fetch(`https://api.countapi.xyz/hit/huseynliabbas/visits`)
+    .then(response => response.json())
     .then(data => {
-      document.getElementById('visitor-count').textContent = data.value.toLocaleString();
+      console.log('Ziyarətçi sayı:', data.value);
+      document.getElementById('visitor-count').textContent = data.value;
     })
-    .catch(() => {
+    .catch(error => {
+      console.error('Xəta:', error);
       document.getElementById('visitor-count').textContent = '0';
     });
 </script>
