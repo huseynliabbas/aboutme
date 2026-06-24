@@ -609,7 +609,7 @@
       document.getElementById('visitor-count').textContent = '0';
     });
 </script>
-  <!-- ── AI CHAT BOT ── -->
+  <!-- ── AI CHAT BOT (Groq) ── -->
 <style>
   #chat-btn {
     position: fixed;
@@ -945,7 +945,7 @@
       type="text"
       placeholder="Sual yazın..."
       maxlength="300"
-      onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendMessage(); }"
+      onkeydown="if(event.key==='Enter'){ event.preventDefault(); sendMessage(); }"
     />
     <button id="chat-send" onclick="sendMessage()">
       <i class="fa-solid fa-paper-plane"></i>
@@ -954,42 +954,32 @@
 </div>
 
 <script>
-// ══════════════════════════════════════════
-//  🔑  API KEY — BURAYA YAZIN
-// ══════════════════════════════════════════
-const GEMINI_KEY = 'AQ.Ab8RN6KlGmuVWYurny5PNNof3Rlvw3lGTRo1gdU79zokdh4_Vw';
+// ══════════════════════════════
+//  🔑 GROQ API KEY — BURAYA
+// ══════════════════════════════
+const GROQ_KEY = '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';
 
-// ══════════════════════════════════════════
-//  SYSTEM PROMPT
-// ══════════════════════════════════════════
-const SYS = `Sen "Abbas Botu"sun — Abbas Hüseynlinin portföy saytındakı köməkçisən.
-YALNIZ Abbas Hüseynli haqqında sualları cavabla. Başqa mövzularda:
-"Bu mövzu mənim sahəm xaricindədir. Abbas haqqında sual verə bilərsiniz." de.
-Cavablar qısa, mehriban və Azərbaycan dilində olsun.
+const SYS_PROMPT = `Sən "Abbas Botu"sun. Abbas Hüseynlinin portföy saytında işləyirsən.
+YALNIZ Abbas haqqında sualları cavabla. Başqa mövzularda: "Bu mövzu mənim sahəm xaricindədir." de.
+Cavablar qısa, mehriban, Azərbaycan dilində olsun. Maksimum 3-4 cümlə.
 
-MƏLUMATLAR:
+ABBAS HÜSEYNLİ HAQQINDA:
 
-ŞƏXSİ:
-- Ad: Abbas Hüseynli
-- Yer: Bakı, Azərbaycan
-- Email: Abbashuseynli97@gmail.com
-- Telefon: +994556743030
+AD: Abbas Hüseynli
+YER: Bakı, Azərbaycan
+EMAIL: Abbashuseynli97@gmail.com
+TELEFON: +994556743030
 
 TƏHSİL:
-- Azərbaycan Dövlət İqtisad Universiteti (ADİU)
-- İxtisas: İqtisadiyyat — Bakalavr (2015–2019)
+- ADİU - İqtisadiyyat Bakalavr (2015-2019)
 
 İŞ TƏCRÜBƏSİ:
-1) Skybox Cargo MMC — Menecer (11/2020–11/2024)
-   - Gündəlik əməliyyatların idarəsi, müştəri ehtiyacları
-   - SMM, zəng mərkəzi, sifariş ofisinin koordinasiyası
-   - Müştəri problemlərinin həlli, aylıq hesabatlar
-   - Gömrük bəyannamələri, logistika sənədləri
-   - Bazar qiymətlərinin monitorinqi
+1) Skybox Cargo MMC - Menecer (2020-2024)
+   Gündəlik əməliyyatlar, müştəri idarəsi, SMM/zəng mərkəzi koordinasiyası,
+   gömrük sənədləri, logistika, bazar monitorinqi
 
-2) Dövlət Sosial Müdafiə Fondu — Təcrübəçi (02/2019–06/2019)
-   - Sosial ödənişlər departamenti
-   - Sənəd düzəlişləri, sosial ödəmə tarixçəsinin araşdırılması
+2) Dövlət Sosial Müdafiə Fondu - Təcrübəçi (2019)
+   Sosial ödənişlər departamenti, sənəd işləri
 
 BACARIQLAR:
 - Data Analitika: Power BI, Oracle SQL, Python, Excel
@@ -997,113 +987,84 @@ BACARIQLAR:
 - Dillər: Azərbaycan (ana dili), Türk (əla), İngilis (Pre-Intermediate)
 
 SERTİFİKAT:
-- Data Analitika — İnnab Business School (04/2024–11/2024), ID: DA105519
+- Data Analitika - İnnab Business School (2024), ID: DA105519
 
-ŞƏXSİ KEYFİYYƏTLƏR:
-Analitik düşüncə, Problem həlli, Multitasking, Kommunikasiya, Adaptasiya`;
+ŞƏXSİ KEYFİYYƏTLƏR: Analitik düşüncə, Problem həlli, Multitasking, Kommunikasiya, Adaptasiya`;
 
-// ══════════════════════════════════════════
-//  STATE
-// ══════════════════════════════════════════
-let chatOpen   = false;
-let loading    = false;
-let firstOpen  = true;
-let history    = [];
+let chatOpen  = false;
+let loading   = false;
+let firstOpen = true;
+let history   = [];
 
-// ══════════════════════════════════════════
-//  TOGGLE
-// ══════════════════════════════════════════
+// ── TOGGLE ──
 function toggleChat() {
   chatOpen = !chatOpen;
-  const win   = document.getElementById('chat-window');
-  const btn   = document.getElementById('chat-btn');
+  const win = document.getElementById('chat-window');
+  const btn = document.getElementById('chat-btn');
 
   if (chatOpen) {
     win.classList.add('open');
     btn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
-
     if (firstOpen) {
       firstOpen = false;
-      setTimeout(() => {
-        addMsg('bot',
-          '👋 Salam! Mən Abbas Botu-yam.\n\n' +
-          'Abbas Hüseynli haqqında hər hansı sualınızı verə bilərsiniz. ' +
-          'Aşağıdakı sürətli suallardan da istifadə edə bilərsiniz. 😊'
-        );
-      }, 350);
+      setTimeout(() => addMsg('bot',
+        '👋 Salam! Mən Abbas Botu-yam.\nAbbas Hüseynli haqqında istənilən sualı verə bilərsiniz! 😊'
+      ), 350);
     }
+    setTimeout(() => {
+      document.getElementById('chat-messages').scrollTop = 99999;
+    }, 100);
   } else {
     win.classList.remove('open');
     btn.innerHTML = '<i class="fa-solid fa-comments"></i><span class="chat-badge">?</span>';
   }
 }
 
-// ══════════════════════════════════════════
-//  MESAJ ƏLAVƏ ET
-// ══════════════════════════════════════════
+// ── MESAJ ƏLAVƏ ET ──
 function addMsg(role, text) {
-  const box = document.getElementById('chat-messages');
-
+  const box    = document.getElementById('chat-messages');
   const wrap   = document.createElement('div');
-  wrap.className = `msg ${role}`;
+  wrap.className = 'msg ' + role;
 
   const av     = document.createElement('div');
   av.className = role === 'bot' ? 'msg-avatar' : 'msg-avatar user-av';
   av.textContent = role === 'bot' ? '🤖' : '👤';
 
-  const bubble = document.createElement('div');
-  bubble.className = 'msg-bubble';
-  bubble.innerHTML = escHtml(text).replace(/\n/g, '<br>');
+  const bub    = document.createElement('div');
+  bub.className = 'msg-bubble';
+  // XSS-dən qoruma + newline
+  bub.innerHTML = text
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/\n/g,'<br>');
 
   wrap.appendChild(av);
-  wrap.appendChild(bubble);
+  wrap.appendChild(bub);
   box.appendChild(wrap);
-  scrollBot();
+  box.scrollTop = box.scrollHeight;
 }
 
-function escHtml(t) {
-  return t.replace(/&/g,'&amp;')
-          .replace(/</g,'&lt;')
-          .replace(/>/g,'&gt;')
-          .replace(/"/g,'&quot;');
-}
-
-// ══════════════════════════════════════════
-//  TYPING
-// ══════════════════════════════════════════
+// ── TYPING ──
 function showTyping() {
   const box  = document.getElementById('chat-messages');
   const wrap = document.createElement('div');
   wrap.id    = 'typing';
   wrap.className = 'typing-wrap';
-
-  const av   = document.createElement('div');
-  av.className = 'msg-avatar';
-  av.textContent = '🤖';
-
   wrap.innerHTML = `
     <div class="msg-avatar">🤖</div>
     <div class="typing-dots">
       <span></span><span></span><span></span>
     </div>`;
-
   box.appendChild(wrap);
-  scrollBot();
+  box.scrollTop = box.scrollHeight;
 }
-
 function hideTyping() {
   const el = document.getElementById('typing');
   if (el) el.remove();
 }
 
-function scrollBot() {
-  const box = document.getElementById('chat-messages');
-  box.scrollTop = box.scrollHeight;
-}
-
-// ══════════════════════════════════════════
-//  QUICK
-// ══════════════════════════════════════════
+// ── QUICK ──
 function sendQuick(text) {
   const qs = document.getElementById('quick-qs');
   if (qs) qs.style.display = 'none';
@@ -1111,14 +1072,11 @@ function sendQuick(text) {
   sendMessage();
 }
 
-// ══════════════════════════════════════════
-//  SEND — GEMINI 1.5 FLASH
-// ══════════════════════════════════════════
+// ── SEND → GROQ API ──
 async function sendMessage() {
   const input   = document.getElementById('chat-input');
   const sendBtn = document.getElementById('chat-send');
   const text    = input.value.trim();
-
   if (!text || loading) return;
 
   addMsg('user', text);
@@ -1127,70 +1085,61 @@ async function sendMessage() {
   sendBtn.disabled = true;
   showTyping();
 
-  history.push({ role: 'user', parts: [{ text }] });
+  // History-ə əlavə et
+  history.push({ role: 'user', content: text });
 
-  const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${AQ.Ab8RN6KlGmuVWYurny5PNNof3Rlvw3lGTRo1gdU79zokdh4_Vw}`;
-
-  const payload = {
-    system_instruction: { parts: [{ text: SYS }] },
-    contents: history,
-    generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: 400,
-      topP: 0.9
-    },
-    safetySettings: [
-      { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_NONE' },
-      { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_NONE' },
-      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
-    ]
-  };
-
+  // Groq API-yə göndər
   try {
-    const res = await fetch(URL, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload)
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GROQ_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'llama3-8b-8192',
+        messages: [
+          { role: 'system', content: SYS_PROMPT },
+          ...history
+        ],
+        temperature: 0.7,
+        max_tokens: 350
+      })
     });
 
-    const data = await res.json();
+    // Status yoxla
+    console.log('Groq status:', res.status);
 
-    // ── CAVAB ÇIXARMA ──
+    const data = await res.json();
+    console.log('Groq data:', data);
+
     let reply = '';
 
-    if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-      reply = data.candidates[0].content.parts[0].text;
-
-    } else if (data?.candidates?.[0]?.finishReason === 'SAFETY') {
-      reply = 'Bu sual təhlükəsizlik filtrindən keçmədi. Fərqli sual verə bilərsiniz.';
-
+    if (data?.choices?.[0]?.message?.content) {
+      reply = data.choices[0].message.content.trim();
     } else if (data?.error) {
-      const code = data.error.code || '';
-      const msg  = data.error.message || '';
-      console.error('Gemini API xətası:', code, msg);
-
-      if (code === 400)   reply = '❌ Sorğu formatı səhvdir. (400)';
-      else if (code === 403) reply = '❌ API icazəsi yoxdur. Key-i yoxlayın. (403)';
-      else if (code === 429) reply = '⏳ Çox tez-tez sorğu. Bir az gözləyin. (429)';
-      else                   reply = `❌ API xətası: ${msg}`;
-
+      console.error('Groq xəta:', data.error);
+      if (res.status === 401) {
+        reply = '❌ API açarı yanlışdır. Key-i yoxlayın.';
+      } else if (res.status === 429) {
+        reply = '⏳ Limit aşıldı. Bir az gözləyin.';
+      } else {
+        reply = `❌ Xəta: ${data.error.message || 'Naməlum xəta'}`;
+      }
     } else {
-      console.warn('Gözlənilməz cavab strukturu:', JSON.stringify(data));
       reply = 'Cavab alına bilmədi. Yenidən cəhd edin.';
     }
 
-    history.push({ role: 'model', parts: [{ text: reply }] });
+    // Bot cavabını history-ə yaz
+    history.push({ role: 'assistant', content: reply });
+
     hideTyping();
     addMsg('bot', reply);
 
   } catch (err) {
     console.error('Fetch xətası:', err);
     hideTyping();
-    addMsg('bot',
-      '🌐 Şəbəkə xətası baş verdi.\n' +
-      'İnternet bağlantınızı yoxlayın və yenidən cəhd edin.'
-    );
+    addMsg('bot', '🌐 Şəbəkə xətası. İnternet bağlantınızı yoxlayın.');
   } finally {
     loading = false;
     sendBtn.disabled = false;
