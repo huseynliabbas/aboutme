@@ -259,9 +259,11 @@
   .hero-text h1 { font-size: 1.8rem; }
   .hero-text p.about {
     max-width: 100%;
-  font-size: .88rem;
-  text-align: center;
-  text-align-last: center;
+    font-size: .88rem;
+    text-align: center;
+    text-align-last: center;
+    margin-left: auto;
+    margin-right: auto;
 }
   .hero-contacts {
     flex-direction: column;
@@ -1008,7 +1010,7 @@ function toggleChat() {
     if (firstOpen) {
       firstOpen = false;
       setTimeout(() => addMsg('bot',
-        '👋 Salam! Mən, Abbas Hüseynli.\Mənim haqqımda istənilən sualı verə bilərsiniz! 😊'
+        '👋 Salam! Mən, Abbas Hüseynli. \Mənim haqqımda istənilən sualı verə bilərsiniz! 😊'
       ), 350);
     }
     setTimeout(() => {
